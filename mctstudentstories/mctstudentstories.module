@@ -1,0 +1,141 @@
+<?php
+
+function mctstudentstories_menu() {
+  $items = array();
+  $items['studentstories/add'] = array(
+    'title' => 'Create New Student Story',
+    'page callback' => 'mctstudentstories_create',
+    'page arguments' => array('node', 1),
+    'access arguments' => array('create student story'),
+    'access callback' => TRUE,
+    'type' => MENU_LOCAL_TASK,
+  );
+  return $items;
+}
+
+function mctstudentstories_create() {
+  drupal_goto('node/add/studentstory');
+}
+
+
+
+
+
+
+
+/*Create the content type*/
+/*using guide on http://www.thecarneyeffect.co.uk/creating-custom-content-type-adding-fields-programmatically-drupal-7?page=1 */
+
+function mctstudentstories_install() {
+  $t = get_t();
+
+  /**** STEP 1 ****/
+
+  // machine name of the content type
+  $name = 'mctstudentstories';
+
+  // define the node type
+  $story = array(
+    'type' => $name,
+    'name' => $t('Student Stories'),
+    'base' => 'node_content',
+    'title_label' => $t('Student Story Title'),
+    'description' => $t('Student Story for showing on the site.'),
+    'custom' => TRUE,
+  );
+
+  // set other node defaults not declared above
+  $content_type = node_type_set_defaults($story);
+
+  // add the body field
+  node_add_body_field($content_type, $t('Story Body'));
+
+  // save the content type
+  node_type_save($content_type);
+
+  /**** STEP 2 ****/
+
+  // add peristant variables that control settings
+  variable_set('additional_settings__active_tab_' . $name, 'edit-menu');
+  variable_set('node_preview_' . $name, 1);
+  variable_set('node_options_' . $name, array(0 => 'status', 1 => 'promote'));
+  variable_set('node_submitted_' . $name, 0);
+  variable_set('menu_options_' . $name, array());
+  variable_set('menu_parent_' . $name, 'main-menu:0');
+
+  /**** STEP 3 ****/
+
+  // create all the fields we are adding to our content type
+  foreach (_mctstudentstories_installed_fields() as $field) {
+    field_create_field($field);
+  }
+
+  // create all the instances for our fields
+  foreach (_mctstudentstories_installed_instances() as $instance) {
+    $instance['entity_type'] = 'node';
+    $instance['bundle'] = $story['type'];
+    field_create_instance($instance);
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * Implements hook_uninstall().
+ */
+function mctstudentstories_uninstall() {
+  // machine name of the content type
+  $name = 'mctstudentstories';
+
+  // gather all mctstudentstories nodes created
+  $sql = 'SELECT nid FROM {node} n WHERE n.type = :type';
+  $result = db_query($sql, array(':type' => $name));
+  $nids = array();
+  foreach ($result as $row) {
+    $nids[] = $row->nid;
+  }
+
+  // delete all the job nodes at once
+  node_delete_multiple($nids);
+
+  // remove peristant variables that control settings
+  variable_del('additional_settings__active_tab_' . $name);
+  variable_del('node_preview_' . $name);
+  variable_del('node_options_' . $name);
+  variable_del('node_submitted_' . $name);
+  variable_del('menu_options_' . $name);
+  variable_del('menu_parent_' . $name);
+
+
+  // find all fields and delete them
+  foreach (array_keys(_mctstudentstories_installed_fields()) as $field) {
+    field_delete_field($field);
+  }
+
+  // find all fields and delete instance
+  $instances = field_info_instances('node', $name);
+  foreach ($instances as $instance_name => $instance) {
+    field_delete_instance($instance);
+  }
+
+  // delete our content type
+  node_type_delete('mctstudentstories');
+
+  // purge all field infromation
+  field_purge_batch(1000);
+}
+
+
+
+
+
+
+?>

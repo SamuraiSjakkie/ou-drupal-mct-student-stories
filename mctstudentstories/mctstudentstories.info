@@ -1,0 +1,5 @@
+name = MCT Student Stories
+description = "Creates the Student Stories."
+core = 7.x
+package = "Jacques Modules"
+version = "7.x-1.0"
